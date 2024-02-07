@@ -1,9 +1,7 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
 """Generate a printable calendar in PDF format, suitable for embedding
 into another document.
 
-Tested with Python 2.7.
+Tested with Python 3.11.
 
 Dependencies:
 - Python
@@ -24,14 +22,9 @@ TODO:
 - Implement diagonal/overlapped cells for months which touch six weeks to avoid
   wasting space on six rows.
 """
-
-from __future__ import (absolute_import, division, print_function,
-                        with_statement, unicode_literals)
-
-__author__ = "Bill Mill; Stephan Sokolow (deitarion/SSokolow)"
-__license__ = "CC0-1.0"  # https://creativecommons.org/publicdomain/zero/1.0/
-
-import calendar, collections, datetime
+import calendar
+import collections
+import datetime
 from contextlib import contextmanager
 
 from reportlab.lib import pagesizes
@@ -39,15 +32,21 @@ from reportlab.pdfgen.canvas import Canvas
 
 # Supporting languages like French should be as simple as editing this
 ORDINALS = {
-    1: 'st', 2: 'nd', 3: 'rd',
-    21: 'st', 22: 'nd', 23: 'rd',
-    31: 'st',
-    None: 'th'}
+    1: "st",
+    2: "nd",
+    3: "rd",
+    21: "st",
+    22: "nd",
+    23: "rd",
+    31: "st",
+    None: "th",
+}
 
 # Something to help make code more readable
-Font = collections.namedtuple('Font', ['name', 'size'])
-Geom = collections.namedtuple('Geom', ['x', 'y', 'width', 'height'])
-Size = collections.namedtuple('Size', ['width', 'height'])
+Font = collections.namedtuple("Font", ["name", "size"])
+Geom = collections.namedtuple("Geom", ["x", "y", "width", "height"])
+Size = collections.namedtuple("Size", ["width", "height"])
+
 
 @contextmanager
 def save_state(canvas):
@@ -56,8 +55,10 @@ def save_state(canvas):
     yield
     canvas.restoreState()
 
-def add_calendar_page(canvas, rect, datetime_obj, cell_cb,
-                      first_weekday=calendar.SUNDAY):
+
+def add_calendar_page(
+    canvas, rect, datetime_obj, cell_cb, first_weekday=calendar.SUNDAY
+):
     """Create a one-month pdf calendar, and return the canvas
 
     @param rect: A C{Geom} or 4-item iterable of floats defining the shape of
@@ -79,14 +80,16 @@ def add_calendar_page(canvas, rect, datetime_obj, cell_cb,
     # set up constants
     scale_factor = min(rect.width, rect.height)
     line_width = scale_factor * 0.0025
-    font = Font('Helvetica', scale_factor * 0.028)
+    font = Font("Helvetica", scale_factor * 0.028)
     rows = len(cal)
 
     # Leave room for the stroke width around the outermost cells
-    rect = Geom(rect.x + line_width,
-                rect.y + line_width,
-                rect.width - (line_width * 2),
-                rect.height - (line_width * 2))
+    rect = Geom(
+        rect.x + line_width,
+        rect.y + line_width,
+        rect.width - (line_width * 2),
+        rect.height - (line_width * 2),
+    )
     cellsize = Size(rect.width / 7, rect.height / rows)
 
     # now fill in the day numbers and any data
@@ -94,21 +97,27 @@ def add_calendar_page(canvas, rect, datetime_obj, cell_cb,
         for col, day in enumerate(week):
             # Give each call to cell_cb a known canvas state
             with save_state(canvas):
-
                 # Set reasonable default drawing parameters
                 canvas.setFont(*font)
                 canvas.setLineWidth(line_width)
 
-
-                cell_cb(canvas, day, Geom(
-                    x=rect.x + (cellsize.width * col),
-                    y=rect.y + ((rows - row) * cellsize.height),
-                    width=cellsize.width, height=cellsize.height),
-                    font, scale_factor)
+                cell_cb(
+                    canvas,
+                    day,
+                    Geom(
+                        x=rect.x + (cellsize.width * col),
+                        y=rect.y + ((rows - row) * cellsize.height),
+                        width=cellsize.width,
+                        height=cellsize.height,
+                    ),
+                    font,
+                    scale_factor,
+                )
 
     # finish this page
     canvas.showPage()
     return canvas
+
 
 def draw_cell(canvas, day, rect, font, scale_factor):
     """Draw a calendar cell with the given characteristics
@@ -143,9 +152,10 @@ def draw_cell(canvas, day, rect, font, scale_factor):
 
     # Draw the lifted ordinal number suffix
     number_width = canvas.stringWidth(day, font.name, font.size)
-    canvas.drawString(text_x + number_width,
-                      text_y + (margin.height * 0.1),
-                      ordinal_str)
+    canvas.drawString(
+        text_x + number_width, text_y + (margin.height * 0.1), ordinal_str
+    )
+
 
 def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
     """Helper to apply add_calendar_page to save a ready-to-print file to disk.
@@ -163,10 +173,16 @@ def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
     wmar, hmar = size.width / 50, size.height / 50
     size = Size(size.width - (2 * wmar), size.height - (2 * hmar))
 
-    add_calendar_page(canvas,
-                      Geom(wmar, hmar, size.width, size.height),
-                      datetime_obj, draw_cell, first_weekday).save()
+    add_calendar_page(
+        canvas,
+        Geom(wmar, hmar, size.width, size.height),
+        datetime_obj,
+        draw_cell,
+        first_weekday,
+    ).save()
+
 
 if __name__ == "__main__":
-    generate_pdf(datetime.datetime.now(), 'calendar.pdf',
-                 pagesizes.landscape(pagesizes.letter))
+    generate_pdf(
+        datetime.datetime.now(), "calendar.pdf", pagesizes.landscape(pagesizes.letter)
+    )
