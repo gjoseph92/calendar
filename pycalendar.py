@@ -78,7 +78,7 @@ def save_state(canvas):
 
 
 def add_calendar_page(
-    canvas, rect, datetime_obj, cell_cb, ordinals, first_weekday=calendar.SUNDAY
+    canvas, rect, datetime_obj, cell_cb, ordinals, label, first_weekday=calendar.SUNDAY
 ):
     """Create a one-month pdf calendar, and return the canvas
 
@@ -89,11 +89,13 @@ def add_calendar_page(
     @param cell_cb: A callback taking (canvas, day, rect, font, ordinals) as arguments
         which will be called to render each cell.
         (C{day} will be 0 for empty cells.)
+    @param label: Whether to add the month, year label
     @param ordinals: Whether to add ordinals after the date number
 
     @type canvas: C{reportlab.pdfgen.canvas.Canvas}
     @type rect: C{Geom}
     @type cell_cb: C{function(Canvas, int, Geom, Font, bool)}
+    @type label: C{bool}
     @type ordinals: C{bool}
     """
     calendar.setfirstweekday(first_weekday)
@@ -137,29 +139,30 @@ def add_calendar_page(
                     ordinals,
                 )
 
-    # Draw the month, year label
-    with save_state(canvas):
-        # Set reasonable default drawing parameters
-        canvas.setFont(*font)
-        canvas.setLineWidth(line_width)
+    if label:
+        # Draw the month, year label
+        with save_state(canvas):
+            # Set reasonable default drawing parameters
+            canvas.setFont(*font)
+            canvas.setLineWidth(line_width)
 
-        # Draw in upper-left unless the month starts on the first day of the week, then lower-right
-        month_ul = cal[0][0] == 0
-        row, col = (0, 0) if month_ul else (rows - 1, 6)
+            # Draw in upper-left unless the month starts on the first day of the week, then lower-right
+            month_ul = cal[0][0] == 0
+            row, col = (0, 0) if month_ul else (rows - 1, 6)
 
-        draw_month_label(
-            canvas,
-            datetime_obj.year,
-            datetime_obj.month,
-            Geom(
-                x=rect.x + (cellsize.width * col),
-                y=rect.y + ((rows - row) * cellsize.height),
-                width=cellsize.width,
-                height=cellsize.height,
-            ),
-            font,
-            upper=month_ul
-        )
+            draw_month_label(
+                canvas,
+                datetime_obj.year,
+                datetime_obj.month,
+                Geom(
+                    x=rect.x + (cellsize.width * col),
+                    y=rect.y + ((rows - row) * cellsize.height),
+                    width=cellsize.width,
+                    height=cellsize.height,
+                ),
+                font,
+                upper=month_ul,
+            )
 
     # finish this page
     canvas.showPage()
@@ -214,7 +217,12 @@ def draw_month_label(canvas, year, month, rect, font, upper=True):
 
 
 def generate_pdf(
-    datetime_obj, outfile, size, ordinals=False, first_weekday=calendar.SUNDAY
+    datetime_obj,
+    outfile,
+    size,
+    ordinals=False,
+    label=True,
+    first_weekday=calendar.SUNDAY,
 ):
     """Helper to apply add_calendar_page to save a ready-to-print file to disk.
 
@@ -238,6 +246,7 @@ def generate_pdf(
         datetime_obj,
         draw_cell,
         ordinals,
+        label,
         first_weekday,
     ).save()
 
@@ -252,12 +261,17 @@ if __name__ == "__main__":
         size: PaperSize = PaperSize.letter.value,  # type:ignore some bug in Typer
         landscape: bool = True,
         ordinals: bool = False,
+        label: bool = True,
     ):
         size_tuple = PAPER_SIZES[size]
         if landscape:
             size_tuple = pagesizes.landscape(size_tuple)
         generate_pdf(
-            datetime.datetime(year, month, 1), str(file), size_tuple, ordinals=ordinals
+            datetime.datetime(year, month, 1),
+            str(file),
+            size_tuple,
+            ordinals=ordinals,
+            label=label,
         )
 
     typer.run(cli)
