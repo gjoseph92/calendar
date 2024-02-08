@@ -78,7 +78,7 @@ def save_state(canvas):
 
 
 def add_calendar_page(
-    canvas, rect, datetime_obj, cell_cb, first_weekday=calendar.SUNDAY
+    canvas, rect, datetime_obj, cell_cb, ordinals, first_weekday=calendar.SUNDAY
 ):
     """Create a one-month pdf calendar, and return the canvas
 
@@ -86,13 +86,15 @@ def add_calendar_page(
         the calendar in points with any margins already applied.
     @param datetime_obj: A Python C{datetime} object specifying the month
         the calendar should represent.
-    @param cell_cb: A callback taking (canvas, day, rect, font) as arguments
+    @param cell_cb: A callback taking (canvas, day, rect, font, ordinals) as arguments
         which will be called to render each cell.
         (C{day} will be 0 for empty cells.)
+    @param ordinals: Whether to add ordinals after the date number
 
     @type canvas: C{reportlab.pdfgen.canvas.Canvas}
     @type rect: C{Geom}
-    @type cell_cb: C{function(Canvas, int, Geom, Font)}
+    @type cell_cb: C{function(Canvas, int, Geom, Font, bool)}
+    @type ordinals: C{bool}
     """
     calendar.setfirstweekday(first_weekday)
     cal = calendar.monthcalendar(datetime_obj.year, datetime_obj.month)
@@ -132,7 +134,7 @@ def add_calendar_page(
                         height=cellsize.height,
                     ),
                     font,
-                    scale_factor,
+                    ordinals,
                 )
 
     # finish this page
@@ -140,19 +142,17 @@ def add_calendar_page(
     return canvas
 
 
-def draw_cell(canvas, day, rect, font, scale_factor):
+def draw_cell(canvas, day, rect, font, ordinals):
     """Draw a calendar cell with the given characteristics
 
     @param day: The date in the range 0 to 31.
     @param rect: A Geom(x, y, width, height) tuple defining the shape of the
         cell in points.
-    @param scale_factor: A number which can be used to calculate sizes which
-        will remain proportional to the size of the entire calendar.
-        (Currently the length of the shortest side of the full calendar)
+    @param ordinals: Whether to add ordinals after the date number
 
     @type rect: C{Geom}
     @type font: C{Font}
-    @type scale_factor: C{float}
+    @type ordinals: C{bool}
     """
     # Skip drawing cells that don't correspond to a date in this month
     if not day:
@@ -164,21 +164,24 @@ def draw_cell(canvas, day, rect, font, scale_factor):
     canvas.rect(rect.x, rect.y - rect.height, rect.width, rect.height)
 
     day = str(day)
-    ordinal_str = ORDINALS.get(int(day), ORDINALS[None])
 
     # Draw the number
     text_x = rect.x + margin.width
     text_y = rect.y - margin.height
     canvas.drawString(text_x, text_y, day)
 
-    # Draw the lifted ordinal number suffix
-    number_width = canvas.stringWidth(day, font.name, font.size)
-    canvas.drawString(
-        text_x + number_width, text_y + (margin.height * 0.1), ordinal_str
-    )
+    if ordinals:
+        # Draw the lifted ordinal number suffix
+        ordinal_str = ORDINALS.get(int(day), ORDINALS[None])
+        number_width = canvas.stringWidth(day, font.name, font.size)
+        canvas.drawString(
+            text_x + number_width, text_y + (margin.height * 0.1), ordinal_str
+        )
 
 
-def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
+def generate_pdf(
+    datetime_obj, outfile, size, ordinals=False, first_weekday=calendar.SUNDAY
+):
     """Helper to apply add_calendar_page to save a ready-to-print file to disk.
 
     @param datetime_obj: A Python C{datetime} object specifying the month
@@ -186,6 +189,7 @@ def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
     @param outfile: The path to which to write the PDF file.
     @param size: A (width, height) tuple (specified in points) representing
         the target page size.
+    @param ordinals: Whether to add ordinals after the date number
     """
     size = Size(*size)
     canvas = Canvas(outfile, size)
@@ -199,6 +203,7 @@ def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
         Geom(wmar, hmar, size.width, size.height),
         datetime_obj,
         draw_cell,
+        ordinals,
         first_weekday,
     ).save()
 
@@ -212,10 +217,13 @@ if __name__ == "__main__":
         file: Path = Path("calendar.pdf"),
         size: PaperSize = PaperSize.letter.value,  # type:ignore some bug in Typer
         landscape: bool = True,
+        ordinals: bool = False,
     ):
         size_tuple = PAPER_SIZES[size]
         if landscape:
             size_tuple = pagesizes.landscape(size_tuple)
-        generate_pdf(datetime.datetime(year, month, 1), str(file), size_tuple)
+        generate_pdf(
+            datetime.datetime(year, month, 1), str(file), size_tuple, ordinals=ordinals
+        )
 
     typer.run(cli)
