@@ -137,6 +137,28 @@ def add_calendar_page(
                     ordinals,
                 )
 
+    # Draw the month, year label
+    with save_state(canvas):
+        # Set reasonable default drawing parameters
+        canvas.setFont(*font)
+        canvas.setLineWidth(line_width)
+
+        # Draw in upper-left unless the month starts on the first day of the week, then lower-right
+        row, col = (0, 0) if cal[0][0] == 0 else (rows - 1, 6)
+
+        draw_month_label(
+            canvas,
+            datetime_obj.year,
+            datetime_obj.month,
+            Geom(
+                x=rect.x + (cellsize.width * col),
+                y=rect.y + ((rows - row) * cellsize.height),
+                width=cellsize.width,
+                height=cellsize.height,
+            ),
+            font,
+        )
+
     # finish this page
     canvas.showPage()
     return canvas
@@ -177,6 +199,16 @@ def draw_cell(canvas, day, rect, font, ordinals):
         canvas.drawString(
             text_x + number_width, text_y + (margin.height * 0.1), ordinal_str
         )
+
+
+def draw_month_label(canvas, year, month, rect, font):
+    margin = Size(font.size * 0.5, font.size * 1.3)
+
+    text_x = rect.x + margin.width
+    text_y = rect.y - margin.height
+    text = f"{calendar.month_abbr[month]} {year}"
+
+    canvas.drawString(text_x, text_y, text)
 
 
 def generate_pdf(
