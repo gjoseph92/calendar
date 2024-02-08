@@ -144,7 +144,8 @@ def add_calendar_page(
         canvas.setLineWidth(line_width)
 
         # Draw in upper-left unless the month starts on the first day of the week, then lower-right
-        row, col = (0, 0) if cal[0][0] == 0 else (rows - 1, 6)
+        month_ul = cal[0][0] == 0
+        row, col = (0, 0) if month_ul else (rows - 1, 6)
 
         draw_month_label(
             canvas,
@@ -157,6 +158,7 @@ def add_calendar_page(
                 height=cellsize.height,
             ),
             font,
+            upper=month_ul
         )
 
     # finish this page
@@ -201,11 +203,11 @@ def draw_cell(canvas, day, rect, font, ordinals):
         )
 
 
-def draw_month_label(canvas, year, month, rect, font):
+def draw_month_label(canvas, year, month, rect, font, upper=True):
     margin = Size(font.size * 0.5, font.size * 1.3)
 
     text_x = rect.x + margin.width
-    text_y = rect.y - margin.height
+    text_y = rect.y - margin.height if upper else rect.y - rect.height + margin.height
     text = f"{calendar.month_abbr[month]} {year}"
 
     canvas.drawString(text_x, text_y, text)
