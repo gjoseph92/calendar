@@ -26,9 +26,12 @@ import calendar
 import collections
 import datetime
 from contextlib import contextmanager
+from enum import Enum
+from pathlib import Path
 
-from reportlab.lib import pagesizes
+from reportlab.lib import pagesizes, units
 from reportlab.pdfgen.canvas import Canvas
+import typer
 
 # Supporting languages like French should be as simple as editing this
 ORDINALS = {
@@ -40,6 +43,24 @@ ORDINALS = {
     23: "rd",
     31: "st",
     None: "th",
+}
+
+
+# Enum support in Typer seems pretty broken. Only appears to work with enums with string
+# values, so we have to have this Enum just to define the names, then the `PAPER_SIZES`
+# dict to define the values.
+class PaperSize(Enum):
+    letter = "letter"
+    legal = "legal"
+    label_4x6 = "label_4x6"
+    label_4x8 = "label_4x8"
+
+
+PAPER_SIZES = {
+    PaperSize.letter: pagesizes.letter,
+    PaperSize.legal: pagesizes.legal,
+    PaperSize.label_4x6: (4 * units.inch, 6 * units.inch),
+    PaperSize.label_4x8: (4 * units.inch, 8 * units.inch),
 }
 
 # Something to help make code more readable
@@ -183,6 +204,18 @@ def generate_pdf(datetime_obj, outfile, size, first_weekday=calendar.SUNDAY):
 
 
 if __name__ == "__main__":
-    generate_pdf(
-        datetime.datetime.now(), "calendar.pdf", pagesizes.landscape(pagesizes.letter)
-    )
+    now = datetime.datetime.now()
+
+    def cli(
+        year: int = now.year,
+        month: int = now.month,
+        file: Path = Path("calendar.pdf"),
+        size: PaperSize = PaperSize.letter.value,  # type:ignore some bug in Typer
+        landscape: bool = True,
+    ):
+        size_tuple = PAPER_SIZES[size]
+        if landscape:
+            size_tuple = pagesizes.landscape(size_tuple)
+        generate_pdf(datetime.datetime(year, month, 1), str(file), size_tuple)
+
+    typer.run(cli)
